@@ -3,30 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <title>管理员登录</title>
-    <!-- 确保Element Plus样式和脚本正确引入，版本兼容 -->
+    <!-- 引入Element Plus样式（CDN稳定版本） -->
     <link rel="stylesheet" href="https://unpkg.com/element-plus@2.3.8/dist/index.css">
 </head>
 <body>
     <div id="app" style="max-width: 300px; margin: 100px auto; padding: 20px; border: 1px solid #eee; border-radius: 5px;">
         <h2 style="text-align: center;">管理员登录</h2>
-        <!-- 表单区域 -->
+        <!-- 登录表单（使用Element Plus组件） -->
         <el-form label-position="top" style="margin-top: 20px;">
-            <!-- 用户名输入框：确保无disabled属性，v-model正确绑定 -->
             <el-form-item label="用户名">
-                <el-input 
-                    v-model="username" 
-                    placeholder="请输入用户名"
-                    :disabled="false"  <!-- 明确禁用禁用状态 -->
-                ></el-input>
+                <el-input v-model="username" placeholder="请输入用户名"></el-input>
             </el-form-item>
-            <!-- 密码输入框：同样确保可交互 -->
             <el-form-item label="密码">
-                <el-input 
-                    v-model="password" 
-                    type="password" 
-                    placeholder="请输入密码"
-                    :disabled="false"
-                ></el-input>
+                <el-input v-model="password" type="password" placeholder="请输入密码"></el-input>
             </el-form-item>
             <el-button type="primary" @click="login" style="width: 100%;">登录</el-button>
         </el-form>
@@ -34,43 +23,48 @@
         <div v-if="message" style="margin-top: 10px; color: red; text-align: center;">{{ message }}</div>
     </div>
 
-    <!-- 引入依赖：Vue 3 + Element Plus + Axios，确保版本兼容 -->
+    <!-- 引入Vue 3（核心依赖） -->
     <script src="https://unpkg.com/vue@3.2.47/dist/vue.global.js"></script>
+    <!-- 引入Element Plus（组件库） -->
     <script src="https://unpkg.com/element-plus@2.3.8/dist/index.full.js"></script>
+    <!-- 引入Axios（HTTP请求） -->
     <script src="https://unpkg.com/axios@0.27.2/dist/axios.min.js"></script>
-    
+
     <script>
-        // 确保Vue实例正确初始化，无语法错误
+        // 初始化Vue应用并注册Element Plus
         const { createApp } = Vue;
         createApp({
             data() {
                 return {
-                    username: '',  // 初始化空字符串，避免绑定问题
-                    password: '',
-                    message: ''
+                    username: '',  // 用户名双向绑定
+                    password: '',  // 密码双向绑定
+                    message: ''    // 提示信息
                 }
             },
             methods: {
                 login() {
-                    // 简单验证输入不为空
+                    // 简单校验
                     if (!this.username || !this.password) {
                         this.message = '请输入用户名和密码';
                         return;
                     }
                     // 发送登录请求
-                    axios.post('/login', new URLSearchParams({
+                    axios.post('/login', {
                         username: this.username,
                         password: this.password
-                    }))
-                    .then(response => {
-                        window.location.href = '/admin';  // 登录成功跳转
-                    })
-                    .catch(error => {
-                        this.message = '用户名或密码不正确';
+                    }).then(response => {
+                        if (response.data.success) {
+                            window.location.href = '/admin'; // 登录成功跳转到管理页
+                        } else {
+                            this.message = response.data.message || '登录失败';
+                        }
+                    }).catch(error => {
+                        console.error('登录请求错误:', error);
+                        this.message = '网络异常，请重试';
                     });
                 }
             }
-        }).use(ElementPlus).mount('#app');  // 确保Element Plus被正确注册
+        }).use(ElementPlus).mount('#app'); // 关键：注册Element Plus并挂载到#app
     </script>
 </body>
 </html>
