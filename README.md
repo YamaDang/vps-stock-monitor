@@ -18,8 +18,8 @@
 
 1. 克隆仓库
    ```bash
-   git clone https://github.com/yourusername/vps-stock-monitor.git
-   cd vps-stock-monitor
+   git clone https://github.com/YamaDang/vps-stock-monitor-v1.git
+   cd vps-stock-monitor-v1
    ```
 
 2. 配置环境变量
@@ -78,7 +78,10 @@
 - 考虑使用反向代理（如Nginx）配置HTTPS
 - 定期备份data目录下的配置文件和instance目录下的数据库文件
 
-## 项目结构vps-stock-monitor/
+
+## 项目结构
+```bash
+vps-stock-monitor/
 ├── core.py               # 库存监控核心逻辑
 ├── web.py                # Flask Web应用主程序
 ├── models.py             # 用户数据模型
@@ -96,6 +99,7 @@
     └── admin/            # 管理员页面
         ├── index.html    # 管理员控制台
         └── profile.html  # 个人设置页面
+```
 ## 常见问题
 
 1. **无法访问系统**
