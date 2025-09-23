@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>管理员控制台 - VPS库存监控系统</title>
-    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <link rel="stylesheet" href="https://unpkg.com/element-plus@2.3.8/dist/index.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
     <style>
         body {
@@ -261,8 +261,8 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://unpkg.com/element-plus/dist/index.full.js"></script>
+    <script src="https://unpkg.com/vue@3.2.47/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/element-plus@2.3.8/dist/index.full.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <script>
         const { createApp, ref, reactive, toRefs, onMounted, getCurrentInstance } = Vue;
@@ -294,7 +294,7 @@
                 const fetchStockList = async () => {
                     try {
                         state.stockLoading = true;
-                        const response = await axios.get('/api/admin/stocks');
+                        const response = await axios.get('/admin/api/stocks');
                         state.stockList = response.data || [];
                     } catch (error) {
                         console.error('获取库存列表失败:', error);
@@ -308,7 +308,7 @@
                 const fetchConfig = async () => {
                     try {
                         state.configLoading = true;
-                        const response = await axios.get('/api/admin/config');
+                        const response = await axios.get('/admin/api/config');
                         state.configForm = { ...state.configForm, ...response.data };
                     } catch (error) {
                         console.error('获取系统配置失败:', error);
@@ -321,7 +321,7 @@
                 // 保存系统配置
                 const saveConfig = async () => {
                     try {
-                        await axios.post('/api/admin/config', state.configForm);
+                        await axios.post('/admin/api/config', state.configForm);
                         ElMessage.success('配置保存成功');
                     } catch (error) {
                         console.error('保存配置失败:', error);
@@ -338,7 +338,7 @@
                 // 重新加载配置
                 const reloadConfig = async () => {
                     try {
-                        await axios.post('/api/admin/reload');
+                        await axios.post('/admin/api/reload');
                         await fetchConfig();
                         await fetchStockList();
                         ElMessage.success('配置已重新加载');
@@ -367,7 +367,7 @@
                             return;
                         }
                         
-                        await axios.post('/api/admin/stocks', state.addStockForm);
+                        await axios.post('/admin/api/stocks', state.addStockForm);
                         state.addStockDialogVisible = false;
                         await fetchStockList();
                         ElMessage.success(`已添加监控项: ${state.addStockForm.name}`);
@@ -390,7 +390,7 @@
                             }
                         );
                         
-                        await axios.delete('/api/admin/stocks', {
+                        await axios.delete('/admin/api/stocks', {
                             data: { name: name }
                         });
                         
