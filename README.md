@@ -18,7 +18,7 @@
 1. 克隆仓库
    ```bash
    git clone https://github.com/YamaDang/vps-stock-monitor-v1.git
-   cd vps-stock-monitor
+   cd vps-stock-monitor-v1
    ```
 
 2. 配置环境变量
