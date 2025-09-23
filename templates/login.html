@@ -118,7 +118,7 @@
                     loginBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 登录中...';
                     
                     // 发送登录请求
-                    const response = await axios.post('/api/login', formData, {
+                    const response = await axios.post('/login', formData, {
                         headers: {
                             'Content-Type': 'application/json'
                         },
