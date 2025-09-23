@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - SECRET_KEY=your-secure-secret-key-change-this
+      - PROXY_HOST=http://flaresolverr:8191  # 可选，用于绕过Cloudflare
+    volumes:
+      - ./data:/app/data
+      - ./instance:/app/instance
+    depends_on:
+      - flaresolverr  # 可选，如不需要可删除
+
+  # 可选的flaresolverr服务，用于绕过Cloudflare
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    restart: always
+    environment:
+      - LOG_LEVEL=info
+      - CAPTCHA_SOLVER=none
+    ports:
+      - "8191:8191"
