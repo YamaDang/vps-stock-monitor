@@ -55,7 +55,7 @@ cd vps-stock-monitor
 
 ### 2. 配置环境变量
 
-复制或重命名`.env.example`文件为`.env`，并根据您的需求修改以下配置项：
+配置文件`.env`，并根据您的需求修改以下配置项：
 
 ```env
 # Flask配置
