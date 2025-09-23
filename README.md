@@ -49,7 +49,7 @@ VPS库存监控系统是一个功能完善的库存监控工具，专门设计�
 ### 1. 克隆仓库
 
 ```bash
-git clone https://github.com/yourusername/vps-stock-monitor.git
+git clone https://github.com/YamaDang/vps-stock-monitor.git
 cd vps-stock-monitor
 ```
 
