@@ -6,21 +6,35 @@ services:
     restart: always
     ports:
       - "5000:5000"
-    environment:
-      - SECRET_KEY=your-secure-secret-key-change-this
-      - PROXY_HOST=http://flaresolverr:8191  # 可选，用于绕过Cloudflare
     volumes:
       - ./data:/app/data
       - ./instance:/app/instance
+    environment:
+      - SECRET_KEY=your-secure-secret-key-here  # 生产环境请更换为随机字符串
+      - PROXY_HOST=http://flaresolverr:8191
+      - TZ=Asia/Shanghai
     depends_on:
-      - flaresolverr  # 可选，如不需要可删除
+      - flaresolverr
 
-  # 可选的flaresolverr服务，用于绕过Cloudflare
   flaresolverr:
     image: ghcr.io/flaresolverr/flaresolverr:latest
     restart: always
     environment:
       - LOG_LEVEL=info
-      - CAPTCHA_SOLVER=none
+      - TZ=Asia/Shanghai
     ports:
       - "8191:8191"
+    volumes:
+      - ./flaresolverr:/app/flaresolverr
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8191"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# 数据卷配置
+volumes:
+  data:
+  instance:
+  flaresolverr:
+    
