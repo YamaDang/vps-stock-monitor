@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员登录 - VPS库存监控系统</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <style>
+        body {
+            background-color: #f5f7fa;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+        }
+        .login-container {
+            width: 100%;
+            max-width: 360px;
+            padding: 2rem;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+        }
+        .login-title {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: #1f2329;
+        }
+        .login-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: #86909c;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2 class="login-title">管理员登录</h2>
+        <div id="app">
+            <el-form ref="loginForm" :model="loginForm" :rules="rules" label-position="top" class="login-form">
+                <el-form-item label="用户名" prop="username">
+                    <el-input 
+                        v-model="loginForm.username" 
+                        placeholder="请输入用户名" 
+                        autocomplete="off"
+                        @keyup.enter="handleLogin">
+                    </el-input>
+                </el-form-item>
+                <el-form-item label="密码" prop="password">
+                    <el-input 
+                        v-model="loginForm.password" 
+                        type="password" 
+                        placeholder="请输入密码" 
+                        autocomplete="off"
+                        @keyup.enter="handleLogin">
+                    </el-input>
+                </el-form-item>
+                <el-form-item>
+                    <el-button 
+                        type="primary" 
+                        style="width: 100%;" 
+                        @click="handleLogin"
+                        :loading="loading">
+                        登录
+                    </el-button>
+                </el-form-item>
+            </el-form>
+            <div v-if="message" class="el-alert el-alert--error" style="margin-top: 1rem;" :closable="false">
+                {{ message }}
+            </div>
+            <div class="login-footer">
+                <p>默认账号：admin，默认密码：admin123</p>
+                <p>登录后请立即修改密码</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/element-plus/dist/index.full.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        const { createApp, ref, reactive, toRefs } = Vue;
+        
+        createApp({
+            setup() {
+                const loginForm = reactive({
+                    username: '',
+                    password: ''
+                });
+                
+                const rules = {
+                    username: [
+                        { required: true, message: '请输入用户名', trigger: 'blur' }
+                    ],
+                    password: [
+                        { required: true, message: '请输入密码', trigger: 'blur' }
+                    ]
+                };
+                
+                const message = ref('');
+                const loading = ref(false);
+                const loginFormRef = ref(null);
+                
+                const handleLogin = async () => {
+                    // 表单验证
+                    if (!loginFormRef.value) return;
+                    
+                    try {
+                        await loginFormRef.value.validate();
+                        loading.value = true;
+                        message.value = '';
+                        
+                        // 发送登录请求
+                        const response = await axios.post('/login', loginForm);
+                        
+                        if (response.data.status === 'success') {
+                            // 登录成功，跳转
+                            window.location.href = response.data.redirect || '/admin';
+                        } else {
+                            message.value = response.data.message || '登录失败';
+                        }
+                    } catch (error) {
+                        if (error.response) {
+                            // 服务器返回错误
+                            message.value = error.response.data.message || '用户名或密码不正确';
+                        } else if (error.name === 'ValidationError') {
+                            // 表单验证错误
+                            message.value = '请填写完整的登录信息';
+                        } else {
+                            // 其他错误
+                            message.value = '登录失败，请稍后重试';
+                        }
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+                
+                return {
+                    loginForm,
+                    rules,
+                    message,
+                    loading,
+                    loginFormRef,
+                    handleLogin
+                };
+            }
+        }).use(ElementPlus).mount('#app');
+    </script>
+</body>
+</html>

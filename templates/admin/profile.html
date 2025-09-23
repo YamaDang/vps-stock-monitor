@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人设置 - VPS库存监控系统</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .title {
+            margin: 0;
+            color: #1f2329;
+        }
+        .card {
+            margin-bottom: 20px;
+        }
+        .form-container {
+            padding: 20px;
+        }
+        .form-item {
+            margin-bottom: 15px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #86909c;
+            font-size: 0.9rem;
+        }
+        .back-link {
+            color: #409eff;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">个人设置</h1>
+            <a href="/admin" class="back-link">
+                <i class="fa fa-arrow-left" style="margin-right: 5px;"></i>返回控制台
+            </a>
+        </div>
+        
+        <div id="app">
+            <el-card class="card">
+                <div class="form-container">
+                    <el-form 
+                        ref="passwordForm" 
+                        :model="passwordForm" 
+                        label-width="150px"
+                        v-loading="loading">
+                        <el-form-item 
+                            label="当前密码" 
+                            prop="current_password"
+                            class="form-item">
+                            <el-input 
+                                v-model="passwordForm.current_password" 
+                                type="password"
+                                placeholder="请输入当前密码">
+                            </el-input>
+                        </el-form-item>
+                        
+                        <el-form-item 
+                            label="新密码" 
+                            prop="new_password"
+                            class="form-item">
+                            <el-input 
+                                v-model="passwordForm.new_password" 
+                                type="password"
+                                placeholder="请输入新密码（至少6位）">
+                            </el-input>
+                        </el-form-item>
+                        
+                        <el-form-item 
+                            label="确认新密码" 
+                            prop="confirm_password"
+                            class="form-item">
+                            <el-input 
+                                v-model="passwordForm.confirm_password" 
+                                type="password"
+                                placeholder="请再次输入新密码">
+                            </el-input>
+                        </el-form-item>
+                        
+                        <el-form-item class="form-item">
+                            <el-button type="primary" @click="changePassword">修改密码</el-button>
+                            <el-button @click="resetForm">重置</el-button>
+                        </el-form-item>
+                    </el-form>
+                </div>
+            </el-card>
+            
+            <div class="footer">
+                <p>VPS库存监控系统 &copy; {{ new Date().getFullYear() }}</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/element-plus/dist/index.full.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        const { createApp, ref, reactive, toRefs } = Vue;
+        
+        createApp({
+            setup() {
+                const state = reactive({
+                    passwordForm: {
+                        current_password: '',
+                        new_password: '',
+                        confirm_password: ''
+                    },
+                    loading: false
+                });
+                
+                const passwordFormRef = ref(null);
+                
+                // 修改密码
+                const changePassword = async () => {
+                    try {
+                        // 简单验证
+                        if (!state.passwordForm.current_password) {
+                            ElMessage.warning('请输入当前密码');
+                            return;
+                        }
+                        
+                        if (state.passwordForm.new_password.length < 6) {
+                            ElMessage.warning('新密码长度至少为6位');
+                            return;
+                        }
+                        
+                        if (state.passwordForm.new_password !== state.passwordForm.confirm_password) {
+                            ElMessage.warning('两次输入的新密码不一致');
+                            return;
+                        }
+                        
+                        state.loading = true;
+                        
+                        const response = await axios.post('/api/admin/change-password', state.passwordForm);
+                        
+                        if (response.data.status === 'success') {
+                            ElMessage.success('密码修改成功，请重新登录');
+                            
+                            // 2秒后跳转到登录页
+                            setTimeout(() => {
+                                window.location.href = '/login';
+                            }, 2000);
+                        } else {
+                            ElMessage.error(response.data.message || '修改密码失败');
+                        }
+                    } catch (error) {
+                        console.error('修改密码失败:', error);
+                        ElMessage.error(error.response?.data?.message || '修改密码失败');
+                    } finally {
+                        state.loading = false;
+                    }
+                };
+                
+                // 重置表单
+                const resetForm = () => {
+                    state.passwordForm = {
+                        current_password: '',
+                        new_password: '',
+                        confirm_password: ''
+                    };
+                };
+                
+                return {
+                    ...toRefs(state),
+                    passwordFormRef,
+                    changePassword,
+                    resetForm
+                };
+            }
+        }).use(ElementPlus).mount('#app');
+    </script>
+</body>
+</html>
