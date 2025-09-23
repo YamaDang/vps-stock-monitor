@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %} - 系统日志{% endblock %}
+
+{% block css %}
+<style>
+    .log-container {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        padding: 30px;
+    }
+    .log-title {
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .log-filter {
+        margin-bottom: 20px;
+    }
+    .log-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .log-table th {
+        background-color: #f8f9fa;
+        text-align: left;
+        padding: 12px;
+        border-bottom: 2px solid #dee2e6;
+        white-space: nowrap;
+    }
+    .log-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .log-table tr:hover {
+        background-color: #f8f9fa;
+    }
+    .log-level {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    .log-level-DEBUG {
+        background-color: #e3f2fd;
+        color: #1565c0;
+    }
+    .log-level-INFO {
+        background-color: #e8f5e8;
+        color: #2e7d32;
+    }
+    .log-level-WARNING {
+        background-color: #fff3e0;
+        color: #e65100;
+    }
+    .log-level-ERROR {
+        background-color: #ffebee;
+        color: #c62828;
+    }
+    .log-message {
+        max-width: 500px;
+        word-break: break-word;
+    }
+    .log-time {
+        white-space: nowrap;
+    }
+    .pagination {
+        margin-top: 20px;
+    }
+    .empty-logs {
+        text-align: center;
+        padding: 50px;
+        color: #6c757d;
+    }
+    .empty-logs i {
+        font-size: 48px;
+        margin-bottom: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">
+    <i class="fa fa-cog mr-2"></i>管理中心
+</h1>
+
+<div class="row">
+    <!-- 侧边栏导航 -->
+    <div class="col-md-3">
+        <div class="card admin-nav">
+            <div class="card-body">
+                <h5 class="card-title mb-4">管理菜单</h5>
+                <div class="btn-group-vertical w-100">
+                    <a href="{{ url_for('admin.monitor_targets') }}" class="btn btn-secondary mb-2">
+                        <i class="fa fa-eye mr-2"></i>监控目标
+                    </a>
+                    <a href="{{ url_for('admin.notification_settings') }}" class="btn btn-secondary mb-2">
+                        <i class="fa fa-bell mr-2"></i>通知设置
+                    </a>
+                    <a href="{{ url_for('admin.logs') }}" class="btn btn-primary mb-2">
+                        <i class="fa fa-file-text mr-2"></i>系统日志
+                    </a>
+                    <a href="{{ url_for('admin.statistics') }}" class="btn btn-secondary mb-2">
+                        <i class="fa fa-bar-chart mr-2"></i>数据统计
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主要内容 -->
+    <div class="col-md-9">
+        <div class="log-container">
+            <h2 class="log-title"><i class="fa fa-file-text mr-2"></i>系统日志</h2>
+            
+            <!-- 日志过滤表单 -->
+            <div class="log-filter">
+                <p class="text-muted">(显示最新的500行日志)</p>
+            </div>
+            
+            <!-- 日志表格 -->
+            {% if logs['items'] %}
+            <div class="table-responsive">
+                <table class="log-table">
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>级别</th>
+                            <th>来源</th>
+                            <th>消息</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs['items'] %}
+                        <tr>
+                            <td class="log-time">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <td><span class="log-level log-level-{{ log.level }}">{{ log.level }}</span></td>
+                            <td>{{ log.source }}</td>
+                            <td class="log-message">{{ log.message }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 分页功能已移除，因为日志已限制为最新500行 -->
+            {% else %}
+            <!-- 空日志提示 -->
+            <div class="empty-logs">
+                <i class="fa fa-file-text-o"></i>
+                <p>暂无系统日志</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

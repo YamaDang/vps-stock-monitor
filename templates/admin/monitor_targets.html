@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %} - 监控目标管理{% endblock %}
+
+{% block css %}
+<style>
+    .table-container {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    .table-header {
+        padding: 20px;
+        border-bottom: 1px solid #dee2e6;
+        background-color: #f8f9fa;
+    }
+    .table-header h2 {
+        margin: 0;
+        font-size: 20px;
+    }
+    .table-responsive {
+        padding: 0;
+    }
+    .table {
+        margin: 0;
+    }
+    .table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+    }
+    .table td {
+        vertical-align: middle;
+    }
+    .status-badge {
+        padding: 4px 10px;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    .badge-active {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    .badge-inactive {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    .url-cell {
+        max-width: 300px;
+        word-break: break-all;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 5px;
+    }
+    .btn-sm {
+        padding: 3px 10px;
+        font-size: 12px;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+    }
+    .empty-state i {
+        font-size: 48px;
+        margin-bottom: 15px;
+        opacity: 0.5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">
+    <i class="fa fa-cog mr-2"></i>管理中心
+</h1>
+
+<div class="row">
+    <!-- 侧边栏导航 -->
+    <div class="col-md-3">
+        <div class="card admin-nav">
+            <div class="card-body">
+                <h5 class="card-title mb-4">管理菜单</h5>
+                <div class="btn-group-vertical w-100">
+                    <a href="{{ url_for('admin.monitor_targets') }}" class="btn btn-primary mb-2">
+                        <i class="fa fa-eye mr-2"></i>监控目标
+                    </a>
+                    <a href="{{ url_for('admin.notification_settings') }}" class="btn btn-secondary mb-2">
+                        <i class="fa fa-bell mr-2"></i>通知设置
+                    </a>
+                    <a href="{{ url_for('admin.logs') }}" class="btn btn-secondary mb-2">
+                        <i class="fa fa-file-text mr-2"></i>系统日志
+                    </a>
+                    <a href="{{ url_for('admin.statistics') }}" class="btn btn-secondary mb-2">
+                        <i class="fa fa-bar-chart mr-2"></i>数据统计
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主要内容 -->
+    <div class="col-md-9">
+        <div class="table-container">
+            <div class="table-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h2><i class="fa fa-eye mr-2"></i>监控目标管理</h2>
+                    <a href="{{ url_for('admin.add_monitor_target') }}" class="btn btn-success">
+                        <i class="fa fa-plus mr-1"></i>添加监控目标
+                    </a>
+                </div>
+            </div>
+            
+            {% if monitor_targets %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>名称</th>
+                            <th>URL</th>
+                            <th>检查类型</th>
+                            <th>检查模式</th>
+                            <th>间隔(秒)</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for target in monitor_targets %}
+                        <tr>
+                            <td>{{ target.name }}</td>
+                            <td class="url-cell">
+                                <a href="{{ target.url }}" target="_blank" rel="noopener noreferrer">
+                                    {{ target.url }}
+                                </a>
+                            </td>
+                            <td>
+                                {% if target.check_type == 'text' %}文本匹配{% endif %}
+                                {% if target.check_type == 'selector' %}CSS选择器{% endif %}
+                                {% if target.check_type == 'api' %}API响应{% endif %}
+                            </td>
+                            <td>{{ target.check_pattern }}</td>
+                            <td>{{ target.interval }}</td>
+                            <td>
+                                <span class="status-badge badge-{{ 'active' if target.is_active else 'inactive' }}">
+                                    {{ '活跃' if target.is_active else '非活跃' }}
+                                </span>
+                                {% if target.use_flaresolverr %}
+                                <span class="badge bg-info ml-2" title="使用FlareSolverr">
+                                    <i class="fa fa-shield"></i>
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <a href="{{ url_for('admin.edit_monitor_target', target_id=target.id) }}" class="btn btn-info btn-sm" title="编辑">
+                                        <i class="fa fa-pencil"></i>
+                                    </a>
+                                    <a href="{{ url_for('admin.toggle_monitor_target', target_id=target.id) }}" class="btn btn-warning btn-sm" title="{{ '启用' if not target.is_active else '禁用' }}">
+                                        <i class="fa fa-{{ 'play' if not target.is_active else 'pause' }}"></i>
+                                    </a>
+                                    <a href="{{ url_for('admin.check_now', target_id=target.id) }}" class="btn btn-primary btn-sm" title="立即检查">
+                                        <i class="fa fa-refresh"></i>
+                                    </a>
+                                    <a href="{{ url_for('admin.delete_monitor_target', target_id=target.id) }}" class="btn btn-danger btn-sm" title="删除" onclick="return confirm('确定要删除这个监控目标吗？删除后将无法恢复。')">
+                                        <i class="fa fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fa fa-search"></i>
+                <p>暂无监控目标</p>
+                <a href="{{ url_for('admin.add_monitor_target') }}" class="btn btn-primary">
+                    <i class="fa fa-plus mr-1"></i>添加第一个监控目标
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

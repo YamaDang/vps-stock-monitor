@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+{% extends "base.html" %}
+
+{% block title %}数据统计 - VPS库存监控系统{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- 侧边栏导航 -->
+        <div class="col-md-3 sidebar">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">管理菜单</h3>
+                </div>
+                <div class="list-group">
+                    <a href="{{ url_for('dashboard') }}" class="list-group-item">仪表盘</a>
+                    <a href="{{ url_for('admin.monitor_targets') }}" class="list-group-item">监控目标</a>
+                    <a href="{{ url_for('admin.notification_settings') }}" class="list-group-item">通知设置</a>
+                    <a href="{{ url_for('admin.logs') }}" class="list-group-item">系统日志</a>
+                    <a href="{{ url_for('admin.statistics') }}" class="list-group-item active">数据统计</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区域 -->
+        <div class="col-md-9 main-content">
+            <div class="content-wrapper">
+                <div class="page-header">
+                    <h1>数据统计</h1>
+                    <p class="text-muted">监控系统运行情况和统计数据</p>
+                </div>
+
+                <!-- 统计卡片 -->
+                <div class="stats-cards">
+                    <div class="card stat-card">
+                        <div class="card-body">
+                            <div class="stat-icon">
+                                <i class="fas fa-target"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 class="stat-value">{{ total_monitors }}</h3>
+                                <p class="stat-label">监控目标总数</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card stat-card">
+                        <div class="card-body">
+                            <div class="stat-icon">
+                                <i class="fas fa-bolt"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 class="stat-value">{{ online_monitors }}</h3>
+                                <p class="stat-label">在线监控数</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card stat-card">
+                        <div class="card-body">
+                            <div class="stat-icon">
+                                <i class="fas fa-bell"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 class="stat-value">{{ total_notifications }}</h3>
+                                <p class="stat-label">通知设置数</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card stat-card">
+                        <div class="card-body">
+                            <div class="stat-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 class="stat-value">{{ avg_response_time }}</h3>
+                                <p class="stat-label">平均响应时间 (ms)</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 图表区域 -->
+                <div class="charts-section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">库存状态分布</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="stockStatusChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">响应时间趋势</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="responseTimeChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 监控目标统计表格 -->
+                <div class="table-section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">监控目标统计详情</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>目标名称</th>
+                                            <th>URL</th>
+                                            <th>库存状态</th>
+                                            <th>响应时间 (ms)</th>
+                                            <th>最近检查时间</th>
+                                            <th>成功率</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% if monitor_stats %}
+                                            {% for target in monitor_stats %}
+                                                <tr>
+                                                    <td>{{ target.name }}</td>
+                                                    <td><a href="{{ target.url }}" target="_blank" class="text-primary">{{ target.url }}</a></td>
+                                                    <td>
+                                                        {% if target.status == 'available' %}
+                                                            <span class="status-badge available">有库存</span>
+                                                        {% elif target.status == 'unavailable' %}
+                                                            <span class="status-badge unavailable">无库存</span>
+                                                        {% else %}
+                                                            <span class="status-badge unknown">未知</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>{{ target.latest_response_time }}</td>
+                                                    <td>{{ target.last_checked }}</td>
+                                                    <td>{{ target.success_rate }}%</td>
+                                                </tr>
+                                            {% endfor %}
+                                        {% else %}
+                                            <tr>
+                                                <td colspan="6" class="text-center">暂无统计数据</td>
+                                            </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block js %}
+<script src="https://cdn.bootcdn.net/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 库存状态分布图表
+        const stockStatusCtx = document.getElementById('stockStatusChart').getContext('2d');
+        const stockStatusChart = new Chart(stockStatusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['有库存', '无库存', '未知'],
+                datasets: [{
+                    data: [{{ stock_status_data.available|default(0) }}, {{ stock_status_data.unavailable|default(0) }}, {{ stock_status_data.unknown|default(0) }}],
+                    backgroundColor: ['#28a745', '#dc3545', '#6c757d'],
+                    borderColor: ['#28a745', '#dc3545', '#6c757d'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return label + ': ' + value + ' (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // 响应时间趋势图表
+        const responseTimeCtx = document.getElementById('responseTimeChart').getContext('2d');
+        const responseTimeChart = new Chart(responseTimeCtx, {
+            type: 'line',
+            data: {
+                labels: [{% for time in time_labels %}{{ time | tojson }}{% if not loop.last %},{% endif %}{% endfor %}],
+                datasets: [{% for target in monitor_stats %}{
+                    label: {{ target.name | tojson }},
+                    data: [{% for rt in target.response_times %}{{ rt }}{% if not loop.last %},{% endif %}{% endfor %}],
+                    borderColor: {{ target.color | tojson }},
+                    backgroundColor: {{ target.color | tojson }} + '20',
+                    tension: 0.1,
+                    fill: false
+                }{% if not loop.last %},{% endif %}{% endfor %}]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: '时间'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: '响应时间 (ms)'
+                        },
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}
+
+{% endblock %}

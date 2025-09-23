@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %} - 登录{% endblock %}
+
+{% block css %}
+<style>
+    .login-container {
+        max-width: 400px;
+        margin: 0 auto;
+        margin-top: 100px;
+    }
+    .login-card {
+        padding: 30px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .login-title {
+        text-align: center;
+        margin-bottom: 25px;
+        color: #495057;
+    }
+    .form-control:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="card login-card">
+        <h2 class="login-title">
+            <i class="fa fa-sign-in mr-2"></i>登录VPS库存监控系统
+        </h2>
+        <form method="POST">
+            <div class="mb-3">
+                <label for="username" class="form-label">用户名</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fa fa-user"></i></span>
+                    <input type="text" class="form-control" id="username" name="username" placeholder="请输入用户名" required>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">密码</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fa fa-lock"></i></span>
+                    <input type="password" class="form-control" id="password" name="password" placeholder="请输入密码" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="fa fa-sign-in mr-1"></i>登录
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

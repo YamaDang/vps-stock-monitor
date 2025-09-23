@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %} - 编辑通知设置{% endblock %}
+
+{% block css %}
+<style>
+    .form-container {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        padding: 30px;
+    }
+    .form-title {
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .form-label {
+        font-weight: 500;
+        margin-bottom: 5px;
+    }
+    .form-control:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    .help-text {
+        font-size: 12px;
+        color: #6c757d;
+        margin-top: 5px;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .input-group-text {
+        min-width: 40px;
+        justify-content: center;
+    }
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+    }
+    .checkbox-label input[type="checkbox"] {
+        margin-right: 8px;
+    }
+    .notification-fields {
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-radius: 6px;
+        margin-top: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">
+    <i class="fa fa-cog mr-2"></i>管理中心
+</h1>
+
+<div class="row">
+    <!-- 侧边栏导航 -->
+    <div class="col-md-3">
+        <div class="card admin-nav">
+            <div class="card-body">
+                <h5 class="card-title mb-4">管理菜单</h5>
+                <div class="btn-group-vertical w-100">
+                    <a href="{{ url_for('admin.monitor_targets') }}" class="btn btn-secondary mb-2">
+                        <i class="fa fa-eye mr-2"></i>监控目标
+                    </a>
+                    <a href="{{ url_for('admin.notification_settings') }}" class="btn btn-secondary mb-2">
+                        <i class="fa fa-bell mr-2"></i>通知设置
+                    </a>
+                    <a href="{{ url_for('admin.edit_notification_setting', setting_id=setting.id) }}" class="btn btn-primary mb-2">
+                        <i class="fa fa-pencil mr-2"></i>编辑通知设置
+                    </a>
+                    <a href="{{ url_for('admin.logs') }}" class="btn btn-secondary mb-2">
+                        <i class="fa fa-file-text mr-2"></i>系统日志
+                    </a>
+                    <a href="{{ url_for('admin.statistics') }}" class="btn btn-secondary mb-2">
+                        <i class="fa fa-bar-chart mr-2"></i>数据统计
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主要内容 -->
+    <div class="col-md-9">
+        <div class="form-container">
+            <h2 class="form-title"><i class="fa fa-bell mr-2"></i>编辑通知设置</h2>
+            <form method="POST">
+                <div class="form-group">
+                    <label for="monitor_target_id" class="form-label">监控目标</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fa fa-eye"></i></span>
+                        <select class="form-control" id="monitor_target_id" name="monitor_target_id" required>
+                            {% for target in monitor_targets %}
+                            <option value="{{ target.id }}" {% if target.id == setting.monitor_target_id %}selected{% endif %}>{{ target.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="help-text">选择要配置通知的监控目标</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="notification_type" class="form-label">通知类型</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fa fa-envelope"></i></span>
+                        <select class="form-control" id="notification_type" name="notification_type" required onchange="toggleNotificationFields()">
+                            <option value="telegram" {% if setting.notification_type == 'telegram' %}selected{% endif %}>Telegram</option>
+                            <option value="xi_zhi" {% if setting.notification_type == 'xi_zhi' %}selected{% endif %}>微信(息知)</option>
+                            <option value="webhook" {% if setting.notification_type == 'webhook' %}selected{% endif %}>自定义URL</option>
+                        </select>
+                    </div>
+                    <div class="help-text">选择通知的发送方式</div>
+                </div>
+                
+                <div id="notification_fields" class="notification-fields">
+                    {% if setting.notification_type == 'telegram' %}
+                    <h6><i class="fa fa-telegram mr-1"></i>Telegram 设置</h6>
+                    <div class="form-group">
+                        <label for="telegram_token" class="form-label">Bot Token</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa fa-key"></i></span>
+                            <input type="text" class="form-control" id="telegram_token" name="telegram_token" value="{{ setting.settings.get('token', '') }}" placeholder="输入Telegram Bot Token" required>
+                        </div>
+                        <div class="help-text">从@BotFather获取的Telegram机器人令牌</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="telegram_chat_id" class="form-label">Chat ID</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa fa-user"></i></span>
+                            <input type="text" class="form-control" id="telegram_chat_id" name="telegram_chat_id" value="{{ setting.settings.get('chat_id', '') }}" placeholder="输入Chat ID" required>
+                        </div>
+                        <div class="help-text">接收通知的聊天ID，可以是用户ID或频道ID</div>
+                    </div>
+                    {% elif setting.notification_type == 'xi_zhi' %}
+                    <h6><i class="fa fa-wechat mr-1"></i>微信(息知) 设置</h6>
+                    <div class="form-group">
+                        <label for="xi_zhi_token" class="form-label">Token</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa fa-key"></i></span>
+                            <input type="text" class="form-control" id="xi_zhi_token" name="xi_zhi_token" value="{{ setting.settings.get('token', '') }}" placeholder="输入息知Token" required>
+                        </div>
+                        <div class="help-text">从息知(xizhi.qqoq.net)获取的通知Token</div>
+                    </div>
+                    {% elif setting.notification_type == 'webhook' %}
+                    <h6><i class="fa fa-link mr-1"></i>自定义URL 设置</h6>
+                    <div class="form-group">
+                        <label for="webhook_url" class="form-label">URL</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa fa-globe"></i></span>
+                            <input type="url" class="form-control" id="webhook_url" name="webhook_url" value="{{ setting.settings.get('url', '') }}" placeholder="输入Webhook URL" required>
+                        </div>
+                        <div class="help-text">库存状态变化时将向此URL发送POST请求，包含JSON格式的通知数据</div>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="enabled" name="enabled" {% if setting.enabled %}checked{% endif %}>
+                        <span>启用通知</span>
+                    </label>
+                    <div class="help-text">启用后，当库存状态变化时将发送通知</div>
+                </div>
+                
+                <div class="d-grid gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa fa-save mr-1"></i>保存更改
+                    </button>
+                    <a href="{{ url_for('admin.notification_settings') }}" class="btn btn-secondary">
+                        <i class="fa fa-arrow-left mr-1"></i>返回
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block js %}
+<script>
+    // 切换通知类型时显示对应的字段
+    function toggleNotificationFields() {
+        const notificationType = document.getElementById('notification_type').value;
+        const notificationFields = document.getElementById('notification_fields');
+        
+        // 清空现有内容
+        notificationFields.innerHTML = '';
+        
+        // 根据通知类型显示不同的字段
+        if (notificationType === 'telegram') {
+            notificationFields.innerHTML = `
+                <h6><i class="fa fa-telegram mr-1"></i>Telegram 设置</h6>
+                <div class="form-group">
+                    <label for="telegram_token" class="form-label">Bot Token</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fa fa-key"></i></span>
+                        <input type="text" class="form-control" id="telegram_token" name="telegram_token" placeholder="输入Telegram Bot Token" required>
+                    </div>
+                    <div class="help-text">从@BotFather获取的Telegram机器人令牌</div>
+                </div>
+                <div class="form-group">
+                    <label for="telegram_chat_id" class="form-label">Chat ID</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fa fa-user"></i></span>
+                        <input type="text" class="form-control" id="telegram_chat_id" name="telegram_chat_id" placeholder="输入Chat ID" required>
+                    </div>
+                    <div class="help-text">接收通知的聊天ID，可以是用户ID或频道ID</div>
+                </div>
+            `;
+        } else if (notificationType === 'xi_zhi') {
+            notificationFields.innerHTML = `
+                <h6><i class="fa fa-wechat mr-1"></i>微信(息知) 设置</h6>
+                <div class="form-group">
+                    <label for="xi_zhi_token" class="form-label">Token</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fa fa-key"></i></span>
+                        <input type="text" class="form-control" id="xi_zhi_token" name="xi_zhi_token" placeholder="输入息知Token" required>
+                    </div>
+                    <div class="help-text">从息知(xizhi.qqoq.net)获取的通知Token</div>
+                </div>
+            `;
+        } else if (notificationType === 'webhook') {
+            notificationFields.innerHTML = `
+                <h6><i class="fa fa-link mr-1"></i>自定义URL 设置</h6>
+                <div class="form-group">
+                    <label for="webhook_url" class="form-label">URL</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fa fa-globe"></i></span>
+                        <input type="url" class="form-control" id="webhook_url" name="webhook_url" placeholder="输入Webhook URL" required>
+                    </div>
+                    <div class="help-text">库存状态变化时将向此URL发送POST请求，包含JSON格式的通知数据</div>
+                </div>
+            `;
+        }
+    }
+    
+    // 页面加载时初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        // 已经通过模板渲染了初始内容，不需要额外处理
+    });
+</script>
+{% endblock %}
+{% endblock %}
