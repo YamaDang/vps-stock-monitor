@@ -17,7 +17,7 @@
 
 1. 克隆仓库
    ```bash
-   git clone https://github.com/yourusername/vps-stock-monitor.git
+   git clone https://github.com/YamaDang/vps-stock-monitor-v1.git
    cd vps-stock-monitor
    ```
 
