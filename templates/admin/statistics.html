@@ -1,7 +1,20 @@
-<!DOCTYPE html>
 {% extends "base.html" %}
 
 {% block title %}数据统计 - VPS库存监控系统{% endblock %}
+
+{% block css %}
+<style>
+    .main-content {
+        max-height: 90vh; /* 设置主内容区域的最大高度为视口高度的90% */
+        overflow-y: auto; /* 启用垂直滚动 */
+    }
+    
+    .table-responsive {
+        max-height: 400px; /* 设置表格的最大高度 */
+        overflow-y: auto; /* 启用垂直滚动 */
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -74,7 +87,7 @@
                                 <i class="fas fa-clock"></i>
                             </div>
                             <div class="stat-content">
-                                <h3 class="stat-value">{{ avg_response_time }}</h3>
+                                <h3 class="stat-value">{{ "%.2f"|format(avg_response_time|float) }}</h3>
                                 <p class="stat-label">平均响应时间 (ms)</p>
                             </div>
                         </div>
@@ -140,9 +153,9 @@
                                                             <span class="status-badge unknown">未知</span>
                                                         {% endif %}
                                                     </td>
-                                                    <td>{{ target.latest_response_time }}</td>
-                                                    <td>{{ target.last_checked }}</td>
-                                                    <td>{{ target.success_rate }}%</td>
+                                                    <td>{{ "%.2f"|format(target.latest_response_time|float) }}</td>
+                                                    <td>{{ target.last_checked | datetimeformat }}</td>
+                                                    <td>{{ "%.2f"|format(target.success_rate|float) }}%</td>
                                                 </tr>
                                             {% endfor %}
                                         {% else %}
@@ -167,7 +180,11 @@
     document.addEventListener('DOMContentLoaded', function() {
         // 库存状态分布图表
         const stockStatusCtx = document.getElementById('stockStatusChart').getContext('2d');
-        const stockStatusChart = new Chart(stockStatusCtx, {
+        // 检查并销毁旧的图表实例
+        if (window.stockStatusChart && typeof window.stockStatusChart.destroy === 'function') {
+            window.stockStatusChart.destroy();
+        }
+        window.stockStatusChart = new Chart(stockStatusCtx, {
             type: 'doughnut',
             data: {
                 labels: ['有库存', '无库存', '未知'],
@@ -188,10 +205,10 @@
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                const label = context.label || '';
-                                const value = context.raw || 0;
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = ((value / total) * 100).toFixed(1);
+                                var label = context.label || '';
+                                var value = context.raw || 0;
+                                var total = context.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+                                var percentage = ((value / total) * 100).toFixed(1);
                                 return label + ': ' + value + ' (' + percentage + '%)';
                             }
                         }
@@ -202,7 +219,11 @@
         
         // 响应时间趋势图表
         const responseTimeCtx = document.getElementById('responseTimeChart').getContext('2d');
-        const responseTimeChart = new Chart(responseTimeCtx, {
+        // 检查并销毁旧的图表实例
+        if (window.responseTimeChart && typeof window.responseTimeChart.destroy === 'function') {
+            window.responseTimeChart.destroy();
+        }
+        window.responseTimeChart = new Chart(responseTimeCtx, {
             type: 'line',
             data: {
                 labels: [{% for time in time_labels %}{{ time | tojson }}{% if not loop.last %},{% endif %}{% endfor %}],

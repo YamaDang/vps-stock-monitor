@@ -9,6 +9,12 @@
         border-radius: 8px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         overflow: hidden;
+        max-height: 75vh; /* 设置最大高度为视口高度的75%，为表格内容留出更多空间 */
+    }
+    
+    .table-responsive {
+        max-height: calc(75vh - 100px); /* 减去表格头部高度 */
+        overflow-y: auto; /* 启用垂直滚动 */
     }
     .table-header {
         padding: 20px;

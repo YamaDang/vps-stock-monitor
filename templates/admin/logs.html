@@ -9,6 +9,12 @@
         border-radius: 8px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         padding: 30px;
+        max-height: 80vh; /* 设置最大高度为视口高度的80% */
+    }
+    
+    .table-responsive {
+        max-height: calc(80vh - 150px); /* 减去标题和过滤区域的高度 */
+        overflow-y: auto; /* 启用垂直滚动 */
     }
     .log-title {
         margin-bottom: 25px;

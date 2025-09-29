@@ -18,20 +18,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 复制应用代码
 COPY . .
 
-# 创建数据和日志目录并设置权限
-RUN mkdir -p /app/data /app/logs && chmod -R 777 /app/data /app/logs
-
-# 创建非root用户
-RUN useradd -m -u 1000 appuser
-
-# 更改应用目录的所有权
-RUN chown -R appuser:appuser /app
+# 创建目录并设置权限（保留root用户运行）
+RUN mkdir -p /app/data /app/logs /app/instance && chmod -R 777 /app/data /app/logs /app/instance
 
 # 设置环境变量
 ENV PYTHONUNBUFFERED=1
 
-# 切换到appuser用户
-USER appuser
-
-# 运行应用
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
+# 运行应用，使用新的application对象
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:application"]

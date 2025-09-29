@@ -85,20 +85,26 @@ def edit_monitor_target(target_id):
         target = MonitorTarget.query.get_or_404(target_id)
         
         if request.method == 'POST':
-            target.name = request.form['name']
-            target.url = request.form['url']
-            target.check_type = request.form['check_type']
-            target.check_pattern = request.form['check_pattern']
-            target.expected_result = request.form.get('expected_result', '')
-            target.interval = int(request.form.get('interval', 300))
-            target.use_flaresolverr = 'use_flaresolverr' in request.form
-            target.updated_at = datetime.utcnow()
-            
-            db.session.commit()
-            
-            logger.info(f"Admin {current_user.username} updated monitor target: {target.name}")
-            flash('监控目标更新成功', 'success')
-            return redirect(url_for('admin.monitor_targets'))
+            try:
+                target.name = request.form['name']
+                target.url = request.form['url']
+                target.check_type = request.form['check_type']
+                target.check_pattern = request.form['check_pattern']
+                target.expected_result = request.form.get('expected_result', '')
+                target.interval = int(request.form.get('interval', 300))
+                target.use_flaresolverr = 'use_flaresolverr' in request.form
+                target.updated_at = datetime.utcnow()
+                
+                db.session.commit()
+                
+                logger.info(f"Admin {current_user.username} updated monitor target: {target.name}")
+                flash('监控目标更新成功', 'success')
+                return redirect(url_for('admin.monitor_targets'))
+            except Exception as e:
+                db.session.rollback()
+                logger.error(f"Error updating monitor target: {str(e)}")
+                flash(f'更新监控目标失败: {str(e)}', 'danger')
+                return redirect(url_for('admin.edit_monitor_target', target_id=target_id))
         
     return render_template('admin/edit_monitor_target.html', target=target)
 
