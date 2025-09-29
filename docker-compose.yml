@@ -17,6 +17,8 @@ services:
     depends_on:
       - flaresolverr
     restart: always
+    # 添加用户和组的映射，确保容器内的进程有足够的权限访问挂载的卷
+    user: "1000:1000"
 
   flaresolverr:
     image: ghcr.io/flaresolverr/flaresolverr:latest
