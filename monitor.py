@@ -10,8 +10,8 @@ from app import app, db, MonitorTarget, StatusCheck, NotificationSetting
 # 配置日志
 logger = logging.getLogger(__name__)
 
-# 获取FlareSolverr URL
-FLARESOLVERR_URL = os.environ.get('FLARESOLVERR_URL', 'http://flaresolverr:8191/v1')
+# 获取FlareSolverr URL - 本地开发环境可以设置为'http://localhost:8191/v1'
+FLARESOLVERR_URL = os.environ.get('FLARESOLVERR_URL', 'http://localhost:8191/v1')
 
 # 使用FlareSolverr获取页面内容
 def get_page_with_flaresolverr(url):
@@ -63,7 +63,8 @@ def check_stock_status(monitor_target):
         
         if not content:
             message = "无法获取页面内容"
-            return is_available, message
+            response_time = (time.time() - start_time) * 1000  # 计算响应时间
+            return is_available, message, response_time
         
         # 根据检查类型判断库存状态
         if monitor_target.check_type == 'text':
@@ -230,6 +231,9 @@ def monitor_stock_status():
         active_targets = MonitorTarget.query.filter_by(is_active=True).all()
         logger.info(f"Found {len(active_targets)} active monitor targets")
         
+        # 跟踪有库存的监控目标
+        available_targets = []
+        
         for target in active_targets:
             logger.info(f"Checking stock status for: {target.name}")
             
@@ -244,6 +248,11 @@ def monitor_stock_status():
                 message=message
             )
             db.session.add(status_check)
+            
+            # 如果有库存，添加到可用目标列表
+            if is_available:
+                available_targets.append((target, status_check))
+                logger.info(f"{target.name} is available")
             
             # 获取该监控目标的所有启用的通知设置
             notification_settings = NotificationSetting.query.filter_by(
@@ -263,7 +272,28 @@ def monitor_stock_status():
                     logger.info(f"Status changed for {target.name}, sending notifications")
                     for notification_setting in notification_settings:
                         send_notification(notification_setting, target, status_check)
+        
+        # 处理全局通知设置（适用于任意监控目标）
+        global_notification_settings = NotificationSetting.query.filter_by(
+            monitor_target_id=None,
+            enabled=True
+        ).all()
+        
+        if global_notification_settings and available_targets:
+            logger.info(f"Found {len(available_targets)} available targets and {len(global_notification_settings)} global notification settings")
             
+            # 对每个全局通知设置，发送所有可用目标的通知
+            for notification_setting in global_notification_settings:
+                for target, status_check in available_targets:
+                    # 只发送变为可用的通知，不发送保持可用的通知
+                    previous_check = StatusCheck.query.filter_by(
+                        monitor_target_id=target.id
+                    ).order_by(StatusCheck.timestamp.desc()).offset(1).first()
+                    
+                    if not previous_check or not previous_check.is_available:
+                        logger.info(f"Sending global notification for {target.name}")
+                        send_notification(notification_setting, target, status_check)
+        
         # 提交数据库更改
         db.session.commit()
         logger.info("Stock monitoring completed")

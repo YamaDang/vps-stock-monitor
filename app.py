@@ -38,6 +38,8 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
+from datetime import timedelta
+
 # 数据库模型
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -78,7 +80,7 @@ class StatusCheck(db.Model):
 
 class NotificationSetting(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    monitor_target_id = db.Column(db.Integer, db.ForeignKey('monitor_target.id'), nullable=False)
+    monitor_target_id = db.Column(db.Integer, db.ForeignKey('monitor_target.id'), nullable=True)  # 设为可为空，支持任意监控目标
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     notification_type = db.Column(db.String(20), nullable=False)  # telegram, xi_zhi, webhook
     settings = db.Column(db.JSON)  # 存储通知配置(如API密钥、聊天ID等)
@@ -88,6 +90,16 @@ class NotificationSetting(db.Model):
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+# 上下文处理器 - 为模板提供工具函数
+@app.context_processor
+def utility_processor():
+    def convert_to_beijing_time(utc_time):
+        # 将UTC时间转换为北京时间(UTC+8)
+        beijing_time = utc_time + timedelta(hours=8)
+        return beijing_time.strftime('%Y-%m-%d %H:%M:%S')
+    
+    return dict(convert_to_beijing_time=convert_to_beijing_time)
 
 # 初始化数据库和创建管理员用户
 def init_db():
@@ -180,13 +192,31 @@ def change_password():
 scheduler = BackgroundScheduler()
 
 def init_scheduler():
-    # 暂时禁用定时任务以解决导入问题
-    logger.info("Scheduler initialization skipped for preview")
+    try:
+        # 使用延迟导入来避免循环导入问题
+        def monitor_stock_status_wrapper():
+            from monitor import monitor_stock_status
+            monitor_stock_status()
+        
+        # 添加定时任务，每300秒执行一次库存检查
+        scheduler.add_job(
+            func=monitor_stock_status_wrapper,
+            trigger=IntervalTrigger(seconds=300),
+            id='stock_monitoring_job',
+            name='Periodic stock monitoring',
+            replace_existing=True
+        )
+        
+        # 启动调度器
+        scheduler.start()
+        logger.info("Scheduler initialized and started successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize scheduler: {str(e)}")
 
 # 应用启动时的初始化
 def init_app():
     init_db()
-    # init_scheduler()  # 暂时禁用定时任务
+    init_scheduler()  # 启动定时任务
     from admin import register_blueprint as register_admin_blueprint
     register_admin_blueprint(app)
     
@@ -199,7 +229,13 @@ def init_app():
 # 在应用上下文之外调用初始化函数
 if __name__ == '__main__':
     init_app()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    try:
+        app.run(debug=True, host='0.0.0.0', port=5000)
+    except (KeyboardInterrupt, SystemExit):
+        # 优雅关闭调度器
+        if scheduler.running:
+            scheduler.shutdown()
+            logger.info("Scheduler shut down gracefully")
 else:
     # 在生产环境中使用gunicorn等WSGI服务器时初始化
     init_app()

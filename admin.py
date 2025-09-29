@@ -176,40 +176,43 @@ def add_notification_setting():
         monitor_targets = MonitorTarget.query.all()
     
     if request.method == 'POST':
-        from app import app, db, NotificationSetting
-        monitor_target_id = request.form['monitor_target_id']
-        notification_type = request.form['notification_type']
-        enabled = 'enabled' in request.form
+            from app import app, db, NotificationSetting
+            monitor_target_id = request.form['monitor_target_id']
+            notification_type = request.form['notification_type']
+            enabled = 'enabled' in request.form
+            
+            # 根据通知类型获取不同的设置
+            settings = {}
+            
+            if notification_type == 'telegram':
+                settings['token'] = request.form.get('telegram_token', '')
+                settings['chat_id'] = request.form.get('telegram_chat_id', '')
+            elif notification_type == 'xi_zhi':
+                settings['token'] = request.form.get('xi_zhi_token', '')
+            elif notification_type == 'webhook':
+                settings['url'] = request.form.get('webhook_url', '')
+            
+            # 创建新的通知设置，关联到当前管理员用户
+            new_setting = NotificationSetting(
+                monitor_target_id=monitor_target_id if monitor_target_id else None,
+                user_id=current_user.id,
+                notification_type=notification_type,
+                settings=settings,
+                enabled=enabled
+            )
         
-        # 根据通知类型获取不同的设置
-        settings = {}
-        
-        if notification_type == 'telegram':
-            settings['token'] = request.form.get('telegram_token', '')
-            settings['chat_id'] = request.form.get('telegram_chat_id', '')
-        elif notification_type == 'xi_zhi':
-            settings['token'] = request.form.get('xi_zhi_token', '')
-        elif notification_type == 'webhook':
-            settings['url'] = request.form.get('webhook_url', '')
-        
-        # 创建新的通知设置，关联到当前管理员用户
-        new_setting = NotificationSetting(
-            monitor_target_id=monitor_target_id,
-            user_id=current_user.id,
-            notification_type=notification_type,
-            settings=settings,
-            enabled=enabled
-        )
-        
-        with app.app_context():
-            db.session.add(new_setting)
-            db.session.commit()
-        
-        with app.app_context():
-            target = MonitorTarget.query.get(monitor_target_id)
-        logger.info(f"Admin {current_user.username} added notification setting for {target.name}")
-        flash('通知设置添加成功', 'success')
-        return redirect(url_for('admin.notification_settings'))
+            with app.app_context():
+                db.session.add(new_setting)
+                db.session.commit()
+            
+            with app.app_context():
+                if monitor_target_id:
+                    target = MonitorTarget.query.get(monitor_target_id)
+                    logger.info(f"Admin {current_user.username} added notification setting for {target.name}")
+                else:
+                    logger.info(f"Admin {current_user.username} added global notification setting")
+            flash('通知设置添加成功', 'success')
+            return redirect(url_for('admin.notification_settings'))
         
     return render_template('admin/add_notification_setting.html', 
                           monitor_targets=monitor_targets)
@@ -239,15 +242,19 @@ def edit_notification_setting(setting_id):
         
         with app.app_context():
             setting = NotificationSetting.query.get_or_404(setting_id)
-            setting.monitor_target_id = request.form['monitor_target_id']
+            setting.monitor_target_id = request.form['monitor_target_id'] if request.form['monitor_target_id'] else None
             setting.notification_type = request.form['notification_type']
             setting.enabled = 'enabled' in request.form
             setting.settings = settings
             
             db.session.commit()
             
-            target = MonitorTarget.query.get(setting.monitor_target_id)
-        logger.info(f"Admin {current_user.username} updated notification setting for {target.name}")
+            # 处理日志记录，考虑到可能没有特定监控目标
+            if setting.monitor_target_id:
+                target = MonitorTarget.query.get(setting.monitor_target_id)
+                logger.info(f"Admin {current_user.username} updated notification setting for {target.name}")
+            else:
+                logger.info(f"Admin {current_user.username} updated global notification setting")
         flash('通知设置更新成功', 'success')
         return redirect(url_for('admin.notification_settings'))
         
@@ -263,12 +270,16 @@ def delete_notification_setting(setting_id):
     from app import app, db, NotificationSetting, MonitorTarget
     with app.app_context():
         setting = NotificationSetting.query.get_or_404(setting_id)
-        target = MonitorTarget.query.get(setting.monitor_target_id)
         
         db.session.delete(setting)
         db.session.commit()
-    
-    logger.info(f"Admin {current_user.username} deleted notification setting for {target.name}")
+        
+        # 处理日志记录，考虑到可能没有特定监控目标
+        if setting.monitor_target_id:
+            target = MonitorTarget.query.get(setting.monitor_target_id)
+            logger.info(f"Admin {current_user.username} deleted notification setting for {target.name}")
+        else:
+            logger.info(f"Admin {current_user.username} deleted global notification setting")
     flash('通知设置删除成功', 'success')
     return redirect(url_for('admin.notification_settings'))
 
@@ -277,21 +288,69 @@ def delete_notification_setting(setting_id):
 @login_required
 @admin_required
 def check_now(target_id):
-    from app import app, MonitorTarget
+    from app import app, MonitorTarget, db, StatusCheck
+    from monitor import check_stock_status, send_notification, NotificationSetting
+    import time
     
-    with app.app_context():
-        target = MonitorTarget.query.get_or_404(target_id)
-        
-        # 导入监控函数
-        from monitor import monitor_stock_status
-        
-        # 创建一个只包含当前目标的临时列表
-        # 为了简化，这里直接调用完整的监控函数
-        # 在实际应用中，可能需要创建一个只检查单个目标的函数
-        monitor_stock_status()
+    try:
+        with app.app_context():
+            # 获取目标并确保它在当前会话中
+            target = MonitorTarget.query.get_or_404(target_id)
+            
+            logger.info(f"Admin {current_user.username} manually checking {target.name}")
+            
+            try:
+                # 只检查指定的目标，而不是所有目标
+                is_available, message, response_time = check_stock_status(target)
+                
+                # 创建状态检查记录
+                status_check = StatusCheck(
+                    monitor_target_id=target.id,
+                    is_available=is_available,
+                    response_time=response_time,
+                    message=message
+                )
+                db.session.add(status_check)
+                
+                # 检查是否需要发送通知（状态变化时）
+                notification_settings = NotificationSetting.query.filter_by(
+                    monitor_target_id=target.id,
+                    enabled=True
+                ).all()
+                
+                if notification_settings:
+                    # 获取上一次的状态检查结果
+                    previous_check = StatusCheck.query.filter_by(
+                        monitor_target_id=target.id
+                    ).order_by(StatusCheck.timestamp.desc()).offset(1).first()
+                    
+                    # 如果是第一次检查或者状态发生变化，则发送通知
+                    if not previous_check or previous_check.is_available != is_available:
+                        logger.info(f"Status changed for {target.name}, sending notifications")
+                        for notification_setting in notification_settings:
+                            # 确保在同一个会话中使用这些对象
+                            notification_setting = db.session.merge(notification_setting)
+                            send_notification(notification_setting, target, status_check)
+                
+                db.session.commit()
+                
+                logger.info(f"Admin {current_user.username} manually checked {target.name}")
+                flash('已立即执行检查', 'success')
+                
+            except Exception as check_error:
+                # 发生错误时回滚会话
+                db.session.rollback()
+                logger.error(f"Check error for {target.name}: {str(check_error)}")
+                flash(f'检查过程中出错: {str(check_error)}', 'danger')
+                
+    except Exception as e:
+        logger.error(f"Error manually checking target {target_id}: {str(e)}")
+        flash(f'检查执行失败: {str(e)}', 'danger')
     
-    logger.info(f"Admin {current_user.username} manually checked {target.name}")
-    flash('已立即执行检查', 'success')
+    # 重定向回来源页面，如果没有来源页面则回退到dashboard
+    referrer = request.headers.get('Referer')
+    if referrer and '/statistics' in referrer:
+        return redirect(url_for('admin.statistics'))
     return redirect(url_for('dashboard'))
 
 # 监控日志页面
@@ -299,6 +358,8 @@ def check_now(target_id):
 @login_required
 @admin_required
 def logs():
+    # 从请求参数中获取limit，如果没有则使用默认值500
+    limit = request.args.get('limit', 500, type=int)
     import re
     from datetime import datetime
     
@@ -308,8 +369,8 @@ def logs():
         
         # 反转日志，显示最新的在前
         log_lines.reverse()
-        # 限制显示的日志行数
-        log_lines = log_lines[:500]  # 只显示最新的500行
+        # 限制显示的日志行数，最多500行
+        log_lines = log_lines[:min(limit, 500)]  
         
         # 解析日志行并创建结构化的日志对象
         log_items = []
@@ -353,7 +414,7 @@ def logs():
             'message': f"无法读取日志文件: {str(e)}"
         }]
     
-    return render_template('admin/logs.html', logs={'items': log_items})
+    return render_template('admin/logs.html', logs={'items': log_items}, limit=limit)
 
 # 数据统计页面
 @admin_bp.route('/statistics')
@@ -367,7 +428,7 @@ def statistics():
     total_monitors = 0
     online_monitors = 0
     total_notifications = 0
-    avg_response_time = "0"
+    avg_response_time = 0
     monitor_targets = []
     
     with app.app_context():
@@ -381,7 +442,7 @@ def statistics():
         # 获取平均响应时间（如果有数据的话）
         recent_checks = StatusCheck.query.order_by(StatusCheck.timestamp.desc()).limit(100).all()
         if recent_checks:
-            avg_response_time = f"{sum(check.response_time for check in recent_checks if check.response_time) / len([check for check in recent_checks if check.response_time]) :.1f}"
+            avg_response_time = sum(check.response_time for check in recent_checks if check.response_time) / len([check for check in recent_checks if check.response_time])
         
         # 获取监控目标列表
         monitor_targets = MonitorTarget.query.all()
