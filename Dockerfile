@@ -19,7 +19,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # 创建数据和日志目录
-RUN mkdir -p /app/data /app/logs
+RUN mkdir -p /app/data /app/logs && chmod -R 777 /app/data /app/logs
 
 # 设置环境变量
 ENV PYTHONUNBUFFERED=1
